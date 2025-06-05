@@ -17,31 +17,37 @@ weather_api_key = os.getenv("WEATHER_API_KEY")
 
 @app.route('/weather/<city_code>', methods=['GET'])
 def get_weather(city_code):
-    # Step 1: Check Redis Cache
-    cached_data = cache.get(city_code)
-    if cached_data:
-        return jsonify({
-            'city': city_code,
-            'data': cached_data.decode('utf-8'),
-            'source': 'cache'
-        })
-
-    # Step 2: Fetch from Visual Crossing
     try:
+        # Step 1: Try Redis cache
+        cached_data = cache.get(city_code)
+        if cached_data:
+            return jsonify({
+                'city': city_code,
+                'data': eval(cached_data.decode('utf-8')),
+                'source': 'cache'
+            })
+
+        # Step 2: Request from 3rd-party API
         url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city_code}?key={weather_api_key}&unitGroup=metric"
         response = requests.get(url)
-        response.raise_for_status()  # Raise error if status is not 2xx
+        if response.status_code != 200:
+            return jsonify({
+                'error': 'Invalid city code or API failure',
+                'status_code': response.status_code,
+                'message': response.json().get('message', 'Unknown error')
+            }), response.status_code
+
         data = response.json()
 
-        # Extract only relevant fields
+        # Step 3: Parse today's weather
         today = data['days'][0]
         result = {
-            'temp': today['temp'],
-            'conditions': today['conditions'],
-            'description': today.get('description', '')
+            'temp': today.get('temp', 'N/A'),
+            'conditions': today.get('conditions', 'N/A'),
+            'description': today.get('description', 'No description available')
         }
 
-        # Step 3: Cache the result with 12-hour expiry
+        # Step 4: Cache the result (12 hrs)
         cache.setex(city_code, 43200, str(result))
 
         return jsonify({
@@ -50,9 +56,21 @@ def get_weather(city_code):
             'source': '3rd-party API'
         })
 
+    except requests.exceptions.RequestException as req_err:
+        return jsonify({
+            'error': 'Request to weather API failed',
+            'details': str(req_err)
+        }), 500
+
+    except redis.exceptions.RedisError as redis_err:
+        return jsonify({
+            'warning': 'Weather retrieved but cache failed',
+            'cache_error': str(redis_err)
+        }), 200
+
     except Exception as e:
         return jsonify({
-            'error': 'Failed to fetch weather data',
+            'error': 'Unexpected server error',
             'details': str(e)
         }), 500
 
