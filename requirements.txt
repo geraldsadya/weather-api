@@ -2,3 +2,4 @@ flask
 python-dotenv
 redis
 requests
+flask-limiter
