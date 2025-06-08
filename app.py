@@ -33,7 +33,13 @@ weather_api_key = os.getenv("WEATHER_API_KEY")
 @app.route('/weather/<city_code>', methods=['GET'])
 @limiter.limit("10 per minute")
 def get_weather(city_code):
+    if not weather_api_key:
+        return jsonify({
+            'error': 'Weather API key not configured'
+        }), 500
+
     try:
+        # 1. Check cache
         if cache:
             cached_data = cache.get(city_code)
             if cached_data:
@@ -43,9 +49,29 @@ def get_weather(city_code):
                     'source': 'cache'
                 })
 
+        # 2. Fetch from Visual Crossing with timeout
         url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city_code}?key={weather_api_key}&unitGroup=metric"
-        response = requests.get(url)
+        response = requests.get(url, timeout=10)
+
+        # Handle bad response
+        if response.status_code != 200:
+            try:
+                message = response.json().get('message', 'Unknown error')
+            except:
+                message = 'Unknown error'
+            return jsonify({
+                'error': 'Invalid city code or API failure',
+                'status_code': response.status_code,
+                'message': message
+            }), response.status_code
+
         data = response.json()
+
+        # 3. Parse result safely
+        if not data.get('days') or len(data['days']) == 0:
+            return jsonify({
+                'error': 'No weather data available for this location'
+            }), 404
 
         today = data['days'][0]
         result = {
@@ -54,6 +80,7 @@ def get_weather(city_code):
             'description': today.get('description', 'No description available')
         }
 
+        # 4. Cache result
         if cache:
             try:
                 cache.setex(city_code, 43200, json.dumps(result))
@@ -66,13 +93,23 @@ def get_weather(city_code):
             'source': '3rd-party API'
         })
 
+    except requests.exceptions.Timeout:
+        return jsonify({
+            'error': 'Weather API request timeout'
+        }), 504
+
+    except requests.exceptions.RequestException as req_err:
+        return jsonify({
+            'error': 'Request to weather API failed',
+            'details': str(req_err)
+        }), 500
+
     except Exception as e:
         return jsonify({
-            'error': 'Unexpected error occurred',
+            'error': 'Unexpected server error',
             'details': str(e)
         }), 500
 
-# Custom handler for rate limit error
 @app.errorhandler(429)
 def ratelimit_handler(e):
     return jsonify({
