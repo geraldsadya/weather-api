@@ -45,6 +45,18 @@ def home():
         }
     })
 
+@app.route('/health')
+def health_check():
+    """
+    Health check endpoint to verify service status
+    """
+    return jsonify({
+        'status': 'healthy',
+        'cache': 'enabled' if cache else 'disabled',
+        'api_key': 'configured' if weather_api_key else 'missing'
+    })
+
+
 @limiter.limit("10 per minute")
 def get_weather(city_code):
     if not weather_api_key:
