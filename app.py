@@ -31,6 +31,20 @@ except redis.exceptions.RedisError:
 weather_api_key = os.getenv("WEATHER_API_KEY")
 
 @app.route('/weather/<city_code>', methods=['GET'])
+@app.route('/')
+def home():
+    """
+    Root endpoint providing basic API information
+    """
+    return jsonify({
+        'message': 'Weather API Service',
+        'version': '1.0.0',
+        'endpoints': {
+            'weather': '/weather/<city_code>',
+            'health': '/health'
+        }
+    })
+
 @limiter.limit("10 per minute")
 def get_weather(city_code):
     if not weather_api_key:
