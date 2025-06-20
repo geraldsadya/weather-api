@@ -67,7 +67,7 @@ def get_weather(city_code):
     try:
         # 1. Check cache
         if cache:
-            cached_data = cache.get(city_code)
+            cached_data = cache.get(f"weather:{city_code}")
             if cached_data:
                 return jsonify({
                     'city': city_code,
@@ -109,7 +109,7 @@ def get_weather(city_code):
         # 4. Cache result
         if cache:
             try:
-                cache.setex(city_code, 43200, json.dumps(result))
+                cache.setex(f"weather:{city_code}", 43200, json.dumps(result))
             except redis.exceptions.RedisError as e:
                 print(f"Cache set error: {e}")
 
