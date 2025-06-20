@@ -69,11 +69,16 @@ def get_weather(city_code):
         if cache:
             cached_data = cache.get(f"weather:{city_code}")
             if cached_data:
+                print(f"✓ Cache hit for {city_code}")
                 return jsonify({
                     'city': city_code,
                     'data': json.loads(cached_data),
-                    'source': 'cache'
-                })
+                'source': 'cache',
+                'cached': True
+            })
+            else:
+                print(f"⏳ Cache miss for {city_code}")
+
 
         # 2. Fetch from Visual Crossing with timeout
         url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city_code}?key={weather_api_key}&unitGroup=metric"
