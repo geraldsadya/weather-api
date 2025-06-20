@@ -106,10 +106,15 @@ def get_weather(city_code):
 
         today = data['days'][0]
         result = {
-            'temp': today.get('temp', 'N/A'),
+            'temperature': today.get('temp', 'N/A'),
             'conditions': today.get('conditions', 'N/A'),
-            'description': today.get('description', 'No description available')
+            'description': today.get('description', 'No description available'),
+            'humidity': today.get('humidity', 'N/A'),
+            'wind_speed': today.get('windspeed', 'N/A'),
+            'location': data.get('resolvedAddress', city_code),
+            'last_updated': today.get('datetime', 'N/A')
         }
+
 
         # 4. Cache result
         if cache:
