@@ -23,11 +23,14 @@ limiter = Limiter(
 # Redis with fallback
 redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
 try:
+    # Attempt to connect to Redis
     cache = redis.Redis.from_url(redis_url, decode_responses=True)
-    cache.ping()
-except redis.exceptions.RedisError:
+    cache.ping()  # Test connection
+    print("✓ Redis cache connected successfully")
+except redis.exceptions.RedisError as e:
     cache = None
-    print("Warning: Redis connection failed. Running without cache.")
+    print(f"⚠ Warning: Redis connection failed ({e}). Running without cache.")
+
 
 # API key
 weather_api_key = os.getenv("WEATHER_API_KEY")
