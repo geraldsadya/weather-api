@@ -7,6 +7,8 @@ from dotenv import load_dotenv
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 
+CACHE_EXPIRATION = 43200
+
 load_dotenv()
 
 app = Flask(__name__)
@@ -124,7 +126,7 @@ def get_weather(city_code):
         # 4. Cache result
         if cache:
             try:
-                cache.setex(f"weather:{city_code}", 43200, json.dumps(result))
+                cache.setex(f"weather:{city_code}", CACHE_EXPIRATION, json.dumps(result))
             except redis.exceptions.RedisError as e:
                 print(f"Cache set error: {e}")
 
