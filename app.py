@@ -94,17 +94,29 @@ def get_weather(city_code):
         url = f"https://weather.visualcrossing.com/VisualCrossingWebServices/rest/services/timeline/{city_code}?key={weather_api_key}&unitGroup=metric"
         response = requests.get(url, timeout=10)
 
-        # Handle bad response
-        if response.status_code != 200:
-            try:
-                message = response.json().get('message', 'Unknown error')
-            except:
-                message = 'Unknown error'
+        # Handle API response errors
+        if response.status_code == 400:
             return jsonify({
-                'error': 'Invalid city code or API failure',
-                'status_code': response.status_code,
-                'message': message
-            }), response.status_code
+                'error': 'Invalid city code',
+                'message': f'City \"{city_code}\" not found or invalid'
+            }), 404
+        elif response.status_code == 401:
+            return jsonify({
+                'error': 'API authentication failed',
+                'message': 'Invalid or expired API key'
+            }), 500
+        elif response.status_code != 200:
+            try:
+                error_data = response.json()
+                message = error_data.get('message', 'Unknown API error')
+            except:
+                message = f'HTTP {response.status_code} error'
+            
+            return jsonify({
+                'error': 'Weather API failure',
+                'message': message,
+                'status_code': response.status_code
+            }), 502
 
         data = response.json()
 
